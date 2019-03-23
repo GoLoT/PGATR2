@@ -1,0 +1,6 @@
+﻿cl : Línea de comandos warning D9035: La opción 'Gm' está desusada y se quitará en próximas versiones
+  auxiliar.cpp
+cl : Línea de comandos warning D9035: La opción 'Gm' está desusada y se quitará en próximas versiones
+  main.cpp
+auxiliar.obj : warning LNK4075: se omite '/EDITANDCONTINUE' debido a la especificación '/SAFESEH'
+  P4GLSL.vcxproj -> D:\PGATR2\P4GLSL\Debug\P4GLSL.exe
