@@ -233,7 +233,7 @@ void initOGL()
 
 	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
 	view = glm::mat4(1.0f);
-	view[3].z = -45.0f;
+	view[3].z = -80.0f;
 }
 
 
@@ -435,7 +435,7 @@ void initObj()
 {
 
   const struct aiScene* scene = NULL;
-  scene = aiImportFile(R"(../model/teapot.obj)", aiProcess_GenNormals);
+  scene = aiImportFile(R"(../model/sphere.obj)", aiProcess_GenNormals);
   auto scene2 = aiApplyPostProcessing(scene, aiProcess_CalcTangentSpace);
   auto mesh = scene2->mMeshes[0];
 
@@ -681,7 +681,7 @@ void renderFunc()
 
 	model = glm::mat4(2.0f);
 	model[3].w = 1.0f;
-	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
+	//model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
   renderCubeNormals();
 
@@ -794,6 +794,8 @@ void renderCubeNormals()
   glm::mat4 modelView = view * model;
   glm::mat4 modelViewProj = proj * view * model;
   glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+  glDisable(GL_CULL_FACE);
+
 
   if (uModelViewMatNormals != -1)
     glUniformMatrix4fv(uModelViewMatNormals, 1, GL_FALSE,
