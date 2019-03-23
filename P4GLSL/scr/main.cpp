@@ -398,7 +398,7 @@ void initShaderNormals()
 {
   auto vertexShader = loadShader("../shaders_P4/drawNormals.vert", GL_VERTEX_SHADER);
   auto fragmentShader = loadShader("../shaders_P4/drawNormals.frag", GL_FRAGMENT_SHADER);
-  auto geometryShader = loadShader("../shaders_P4/drawNormals.geo", GL_GEOMETRY_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/drawWireFrame.geo", GL_GEOMETRY_SHADER);
 
   normalsProgram = glCreateProgram();
   glAttachShader(normalsProgram, vertexShader);
@@ -681,7 +681,7 @@ void renderFunc()
 
 	model = glm::mat4(2.0f);
 	model[3].w = 1.0f;
-	//model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
+	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
   renderCubeNormals();
 

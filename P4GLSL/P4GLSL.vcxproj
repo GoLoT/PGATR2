@@ -26,6 +26,7 @@
     <None Include="..\shaders_P4\drawNormals.frag" />
     <None Include="..\shaders_P4\drawNormals.geo" />
     <None Include="..\shaders_P4\drawNormals.vert" />
+    <None Include="..\shaders_P4\drawWireFrame.geo" />
     <None Include="..\shaders_P4\fwRendering.v0.frag" />
     <None Include="..\shaders_P4\fwRendering.v0.vert" />
     <None Include="..\shaders_P4\fwRendering.v2.frag" />
