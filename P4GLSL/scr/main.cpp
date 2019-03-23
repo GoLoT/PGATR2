@@ -426,9 +426,9 @@ void initShaderNormals()
   inPosNormals = glGetAttribLocation(normalsProgram, "inPos");
   inNormalNormals = glGetAttribLocation(normalsProgram, "inNormal");
 
-  uNormalMatNormals = glGetUniformLocation(program, "normal");
-  uModelViewMatNormals = glGetUniformLocation(program, "modelView");
-  uModelViewProjMatNormals = glGetUniformLocation(program, "modelViewProj");
+  uNormalMatNormals = glGetUniformLocation(normalsProgram, "normal");
+  uModelViewMatNormals = glGetUniformLocation(normalsProgram, "modelView");
+  uModelViewProjMatNormals = glGetUniformLocation(normalsProgram, "modelViewProj");
 }
 
 void initObj()
@@ -535,28 +535,38 @@ void initObj()
     mesh->mNumFaces * sizeof(unsigned int) * 3, &faceIdx[0],
     GL_STATIC_DRAW);
 
-  /*glGenVertexArrays(1, &normalsVao);
+  glGenVertexArrays(1, &normalsVao);
   glBindVertexArray(normalsVao);
   glUseProgram(normalsProgram);
 
   if (inPos != -1)
 	{
+    GLuint posVBO;
+    glGenBuffers(1, &posVBO);
     glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertexs.size() * sizeof(float),
+      &vertexs[0], GL_STATIC_DRAW);
     glVertexAttribPointer(inPosNormals, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(inPosNormals);
 	}
 
 	if (inNormal != -1)
 	{
+    GLuint normalVBO;
+    glGenBuffers(1, &normalVBO);
     glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float),
+      &normals[0], GL_STATIC_DRAW);
     glVertexAttribPointer(inNormalNormals, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(inNormalNormals);
 	}
 
+  GLuint triangleIndexVBO;
+  glGenBuffers(1, &triangleIndexVBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIndexVBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
     mesh->mNumFaces * sizeof(unsigned int) * 3, &faceIdx[0],
-    GL_STATIC_DRAW);*/
+    GL_STATIC_DRAW);
 
 	model = glm::mat4(1.0f);
 
@@ -673,8 +683,11 @@ void renderFunc()
 	model[3].w = 1.0f;
 	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
-
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
   renderCubeNormals();
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);
 
   //Omitir etapas posteriores si estamos visualizando etapas intermedias
   if (previewMode == NOPREVIEW) {
@@ -796,7 +809,7 @@ void renderCubeNormals()
     glUniformMatrix4fv(uNormalMatNormals, 1, GL_FALSE,
       &(normal[0][0]));
 
-  glBindVertexArray(vao);
+  glBindVertexArray(normalsVao);
   GLenum err;
   while ((err = glGetError()) != GL_NO_ERROR)
   {
