@@ -683,11 +683,7 @@ void renderFunc()
 	model[3].w = 1.0f;
 	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
   renderCubeNormals();
-  glEnable(GL_CULL_FACE);
-  glEnable(GL_DEPTH_TEST);
 
   //Omitir etapas posteriores si estamos visualizando etapas intermedias
   if (previewMode == NOPREVIEW) {
@@ -809,19 +805,9 @@ void renderCubeNormals()
     glUniformMatrix4fv(uNormalMatNormals, 1, GL_FALSE,
       &(normal[0][0]));
 
-  glBindVertexArray(normalsVao);
-  GLenum err;
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error A " << err << std::endl;
-  }
+  glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, numTris * 3,
     GL_UNSIGNED_INT, (void*)0);
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error B " << err << std::endl;
-  }
-
 }
 
 
