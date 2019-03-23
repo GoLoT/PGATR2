@@ -15,6 +15,11 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <vector>
+
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 500,500
 
@@ -34,7 +39,8 @@ glm::mat4	model = glm::mat4(1.0f);
 float angle = 0.0f;
 
 //VAO
-unsigned int vao;
+unsigned int vao, normalsVao;
+int numTris;
 
 //VBOs que forman parte del objeto
 unsigned int posVBO;
@@ -96,6 +102,10 @@ unsigned int lightFShader;
 unsigned int lightProgram;
 int uPosTexLight, uNormalTexLight, uAlbedoTexLight, inPosLight, uViewLight;
 
+//Shader de dibujado de normales
+unsigned int normalsProgram;
+int inPosNormals, inNormalNormals, uModelViewMatNormals, uModelViewProjMatNormals, uNormalMatNormals;
+
 
 //////////////////////////////////////////////////////////////
 // Funciones auxiliares
@@ -110,6 +120,7 @@ void mouseFunc(int button, int state, int x, int y);
 void specialFunc(int key, int x, int y);
 
 void renderCube();
+void renderCubeNormals();
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
@@ -117,6 +128,7 @@ void initOGL();
 void initShaderFw(const char *vname, const char *fname);
 void initShaderPP(const char *vname, const char *fname);
 void initShaderLight(const char *vname, const char *fname);
+void initShaderNormals();
 void initObj();
 void initPlane();
 void destroy();
@@ -167,6 +179,7 @@ int main(int argc, char** argv)
 	initFBO();
 	resizeFBO(SCREEN_SIZE);
 
+  initShaderNormals();
 	
 	glutMainLoop();
 
@@ -220,7 +233,7 @@ void initOGL()
 
 	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
 	view = glm::mat4(1.0f);
-	view[3].z = -25.0f;
+	view[3].z = -45.0f;
 }
 
 
@@ -381,57 +394,169 @@ void initShaderLight(const char *vname, const char *fname)
   inPosLight = glGetAttribLocation(lightProgram, "inPos");
 }
 
+void initShaderNormals()
+{
+  auto vertexShader = loadShader("../shaders_P4/drawNormals.vert", GL_VERTEX_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/drawNormals.frag", GL_FRAGMENT_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/drawNormals.geo", GL_GEOMETRY_SHADER);
+
+  normalsProgram = glCreateProgram();
+  glAttachShader(normalsProgram, vertexShader);
+  glAttachShader(normalsProgram, geometryShader);
+  glAttachShader(normalsProgram, fragmentShader);
+  glBindAttribLocation(normalsProgram, 0, "inPos");
+  glBindAttribLocation(normalsProgram, 2, "inNormal");
+  glLinkProgram(normalsProgram);
+  int linked;
+  glGetProgramiv(normalsProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(lightProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(normalsProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(normalsProgram);
+    normalsProgram = 0;
+    exit(-1);
+  }
+
+  inPosNormals = glGetAttribLocation(normalsProgram, "inPos");
+  inNormalNormals = glGetAttribLocation(normalsProgram, "inNormal");
+
+  uNormalMatNormals = glGetUniformLocation(program, "normal");
+  uModelViewMatNormals = glGetUniformLocation(program, "modelView");
+  uModelViewProjMatNormals = glGetUniformLocation(program, "modelViewProj");
+}
+
 void initObj()
 {
+
+  const struct aiScene* scene = NULL;
+  scene = aiImportFile(R"(../model/teapot.obj)", aiProcess_GenNormals);
+  auto scene2 = aiApplyPostProcessing(scene, aiProcess_CalcTangentSpace);
+  auto mesh = scene2->mMeshes[0];
+
+  std::vector<float> normals;
+  normals.reserve(mesh->mNumVertices * 3);
+  std::vector<float> vertexs;
+  vertexs.reserve(mesh->mNumVertices * 3);
+  for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+    vertexs.push_back(mesh->mVertices[i].x);
+    vertexs.push_back(mesh->mVertices[i].y);
+    vertexs.push_back(mesh->mVertices[i].z);
+    normals.push_back(mesh->mNormals[i].x);
+    normals.push_back(mesh->mNormals[i].y);
+    normals.push_back(mesh->mNormals[i].z);
+
+  }
+
+
+  std::vector<unsigned int> faceIdx;
+  faceIdx.reserve(mesh->mNumFaces * 3);
+  for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+    faceIdx.push_back(mesh->mFaces[i].mIndices[0]);
+    faceIdx.push_back(mesh->mFaces[i].mIndices[1]);
+    faceIdx.push_back(mesh->mFaces[i].mIndices[2]);
+  }
+  std::vector<float> color(mesh->mNumVertices * 3, 0.5f);
+
+  std::vector<float> textCoords;
+  if (mesh->mTextureCoords[0] != nullptr) {
+    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+      textCoords.push_back(mesh->mTextureCoords[0][i].x);
+      textCoords.push_back(mesh->mTextureCoords[0][i].y);
+      //textCoords.push_back(mesh->mTextureCoords[0][i].z);
+    }
+  }
+  std::vector<float> tangents;
+
+  if (mesh->HasTangentsAndBitangents()) {
+    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+      tangents.push_back(mesh->mTangents[i].x);
+      tangents.push_back(mesh->mTangents[i].y);
+      tangents.push_back(mesh->mTangents[i].z);
+    }
+
+  }
+
+  numTris = mesh->mNumFaces;
+
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+  glUseProgram(lightProgram);
+
 	if (inPos != -1)
 	{
-		glGenBuffers(1, &posVBO);
-		glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex*sizeof(float) * 3,
-			cubeVertexPos, GL_STATIC_DRAW);
-		glVertexAttribPointer(inPos, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(inPos);
+    glGenBuffers(1, &posVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertexs.size() * sizeof(float),
+      &vertexs[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(inPos, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inPos);
 	}
 
 	if (inColor != -1)
 	{
-		glGenBuffers(1, &colorVBO);
-		glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex*sizeof(float) * 3,
-			cubeVertexColor, GL_STATIC_DRAW);
-		glVertexAttribPointer(inColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(inColor);
+    glGenBuffers(1, &colorVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
+    glBufferData(GL_ARRAY_BUFFER, color.size() * sizeof(float),
+      &color[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(inColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inColor);
 	}
 
 	if (inNormal != -1)
 	{
-		glGenBuffers(1, &normalVBO);
-		glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex*sizeof(float) * 3,
-			cubeVertexNormal, GL_STATIC_DRAW);
-		glVertexAttribPointer(inNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(inNormal);
+    glGenBuffers(1, &normalVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float),
+      &normals[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(inNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inNormal);
 	}
-
 
 	if (inTexCoord != -1)
 	{
-		glGenBuffers(1, &texCoordVBO);
-		glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex*sizeof(float) * 2,
-			cubeVertexTexCoord, GL_STATIC_DRAW);
-		glVertexAttribPointer(inTexCoord, 2, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(inTexCoord);
+    glGenBuffers(1, &texCoordVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
+    glBufferData(GL_ARRAY_BUFFER, textCoords.size() * sizeof(float),
+      &textCoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(inTexCoord, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inTexCoord);
 	}
 
-	glGenBuffers(1, &triangleIndexVBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIndexVBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		cubeNTriangleIndex*sizeof(unsigned int) * 3, cubeTriangleIndex,
-		GL_STATIC_DRAW);
+  glGenBuffers(1, &triangleIndexVBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIndexVBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+    mesh->mNumFaces * sizeof(unsigned int) * 3, &faceIdx[0],
+    GL_STATIC_DRAW);
+
+  /*glGenVertexArrays(1, &normalsVao);
+  glBindVertexArray(normalsVao);
+  glUseProgram(normalsProgram);
+
+  if (inPos != -1)
+	{
+    glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+    glVertexAttribPointer(inPosNormals, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inPosNormals);
+	}
+
+	if (inNormal != -1)
+	{
+    glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+    glVertexAttribPointer(inNormalNormals, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inNormalNormals);
+	}
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIndexVBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+    mesh->mNumFaces * sizeof(unsigned int) * 3, &faceIdx[0],
+    GL_STATIC_DRAW);*/
 
 	model = glm::mat4(1.0f);
 
@@ -549,29 +674,7 @@ void renderFunc()
 	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
 
-	std::srand(RAND_SEED);
-	for (unsigned int i = 0; i < 10; i++)
-	{
-		float size = float(std::rand() % 3 + 1);
-
-		glm::vec3 axis(glm::vec3(float(std::rand() % 2),
-			float(std::rand() % 2), float(std::rand() % 2)));
-		if (glm::all(glm::equal(axis, glm::vec3(0.0f))))
-			axis = glm::vec3(1.0f);
-
-		float trans = float(std::rand() % 7 + 3) * 1.00f + 0.5f;
-		glm::vec3 transVec = axis * trans;
-		transVec.x *= (std::rand() % 2) ? 1.0f : -1.0f;
-		transVec.y *= (std::rand() % 2) ? 1.0f : -1.0f;
-		transVec.z *= (std::rand() % 2) ? 1.0f : -1.0f;
-
-		model = glm::rotate(glm::mat4(1.0f), angle*2.0f*size, axis);
-		model = glm::translate(model, transVec);
-		model = glm::rotate(model, angle*2.0f*size, axis);
-		model = glm::scale(model, glm::vec3(1.0f / (size*0.7f)));
-		renderCube();
-	}
-	//*/
+  renderCubeNormals();
 
   //Omitir etapas posteriores si estamos visualizando etapas intermedias
   if (previewMode == NOPREVIEW) {
@@ -654,6 +757,8 @@ void renderFunc()
 
 void renderCube()
 {
+  glUseProgram(program);
+
 	glm::mat4 modelView = view * model;
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
@@ -669,10 +774,42 @@ void renderCube()
 		&(normal[0][0]));
 	
 	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3,
+	glDrawElements(GL_TRIANGLES, numTris * 3,
 		GL_UNSIGNED_INT, (void*)0);
 }
 
+void renderCubeNormals()
+{
+  glUseProgram(normalsProgram);
+
+  glm::mat4 modelView = view * model;
+  glm::mat4 modelViewProj = proj * view * model;
+  glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+
+  if (uModelViewMatNormals != -1)
+    glUniformMatrix4fv(uModelViewMatNormals, 1, GL_FALSE,
+      &(modelView[0][0]));
+  if (uModelViewProjMatNormals != -1)
+    glUniformMatrix4fv(uModelViewProjMatNormals, 1, GL_FALSE,
+      &(modelViewProj[0][0]));
+  if (uNormalMatNormals != -1)
+    glUniformMatrix4fv(uNormalMatNormals, 1, GL_FALSE,
+      &(normal[0][0]));
+
+  glBindVertexArray(vao);
+  GLenum err;
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error A " << err << std::endl;
+  }
+  glDrawElements(GL_TRIANGLES, numTris * 3,
+    GL_UNSIGNED_INT, (void*)0);
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error B " << err << std::endl;
+  }
+
+}
 
 
 void resizeFunc(int width, int height)
@@ -775,3 +912,4 @@ void specialFunc(int key, int x, int y) {
   }
   
 }
+

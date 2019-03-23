@@ -23,6 +23,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\shaders_P4\drawNormals.frag" />
+    <None Include="..\shaders_P4\drawNormals.geo" />
+    <None Include="..\shaders_P4\drawNormals.vert" />
     <None Include="..\shaders_P4\fwRendering.v0.frag" />
     <None Include="..\shaders_P4\fwRendering.v0.vert" />
     <None Include="..\shaders_P4\fwRendering.v2.frag" />
@@ -87,7 +90,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>FreeImage.lib;opengl32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>FreeImage.lib;opengl32.lib;freeglut.lib;glew32.lib;assimp-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\libs\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
