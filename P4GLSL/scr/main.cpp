@@ -148,6 +148,8 @@ void destroy();
 void initFBO();
 void resizeFBO(unsigned int w, unsigned int h);
 
+bool shadedWireframe = false;
+
 
 //Carga el shader indicado, devuele el ID del shader
 //!Por implementar
@@ -833,13 +835,13 @@ void initTriangle()
 
 void initQuad()
 {
-  glGenVertexArrays(1, &triangleVAO);
-  glBindVertexArray(triangleVAO);
+  glGenVertexArrays(1, &quadVAO);
+  glBindVertexArray(quadVAO);
 
   float vertices[] = { -0.7, 0.7, 0.0,
                        -0.7, -0.7, 0.0,
-                       0.7, 0.7, 0.0,
-                       0.7, -0.7, 0.0 };
+                       0.7, -0.7, 0.0,
+                       0.7, 0.7, 0.0 };
 
   GLuint quadVertexVBO;
   glGenBuffers(1, &quadVertexVBO);
@@ -946,7 +948,11 @@ void renderFunc()
 	model = glm::mat4(2.0f);
 	model[3].w = 1.0f;
 	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
+  if (shadedWireframe)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	renderCube();
+  if (shadedWireframe)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   if(geometryMode != DRAW_SHADED)
     renderCubeNormals();
 
@@ -1132,7 +1138,7 @@ void renderTesselationOverlay()
       std::cout << "Error B " << err << std::endl;
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glPatchParameteri(0x8E72, 4); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
+    glPatchParameteri(0x8E72, 4); // glPatchParameteri(GL_PATCH_VERTICES​, 4);
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_PATCHES, 0, 4);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1268,6 +1274,12 @@ void specialFunc(int key, int x, int y) {
   case GLUT_KEY_F7:
     tesselationOverlay = (tesselationOverlayMode)((int)tesselationOverlay + 1);
     if (tesselationOverlay > OVERLAY_TESS_QUAD) tesselationOverlay = (tesselationOverlayMode) 0;
+    break;
+  case GLUT_KEY_F8:
+    //TODO: Enable/disable displacement
+    break;
+  case GLUT_KEY_F9:
+    shadedWireframe = !shadedWireframe;
     break;
   }
   
