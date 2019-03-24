@@ -273,7 +273,7 @@ void initOGL()
 
 	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
 	view = glm::mat4(1.0f);
-	view[3].z = -40.0f;
+	view[3].z = -2.0f;
 }
 
 
@@ -644,7 +644,7 @@ void initObj()
 {
 
   const struct aiScene* scene = NULL;
-  scene = aiImportFile(R"(../model/teapot.obj)", aiProcess_GenNormals);
+  scene = aiImportFile(R"(../model/teapot2.obj)", aiProcess_GenNormals);
   auto scene2 = aiApplyPostProcessing(scene, aiProcess_CalcTangentSpace);
   auto mesh = scene2->mMeshes[0];
 

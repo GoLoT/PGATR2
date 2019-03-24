@@ -12,9 +12,9 @@ out vec3 tess_pos[];
 
 void main(void){
 
-	float distance = clamp(abs(pos[gl_InvocationID].z), 0.0, 60.0);
-	float divisions = distance/6.0;
-
+	float distance = clamp(abs(pos[gl_InvocationID].z), 0.0, 4.0);
+	float divisions = 10.0-(distance*2);
+	divisions = 3;
 	gl_TessLevelInner[0] = divisions;
 	gl_TessLevelOuter[0] = divisions;
 	gl_TessLevelOuter[1] = divisions;

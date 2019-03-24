@@ -10,7 +10,7 @@ out vec3 norm;
 out vec2 texCoord;
 out vec3 pos;
 
-uniform sampler2D colorTex;
+uniform sampler2D specTex;
 
 void main(void){ 
 
@@ -18,5 +18,5 @@ void main(void){
 	texCoord=(gl_TessCoord.x*tess_texCoord[0]+gl_TessCoord.y*tess_texCoord[1]+gl_TessCoord.z*tess_texCoord[2]);
 	norm=(gl_TessCoord.x*tess_norm[0]+gl_TessCoord.y*tess_norm[1]+gl_TessCoord.z*tess_norm[2]);
 
-	gl_Position = gl_Position + vec4(texture(colorTex, texCoord).r * norm * 20, 0.0);
+	gl_Position = gl_Position + vec4(texture(specTex, texCoord).g * norm, 0.0);
 }
