@@ -1,16 +1,17 @@
 #version 430 core
 
 layout (vertices = 4) out;
-
+uniform vec4 outerLevel;
+uniform vec2 innerLevel;
 void main(void){
 
     if (gl_InvocationID == 0){
-        gl_TessLevelInner[0] = 7.0;
-		gl_TessLevelInner[1] = 6.0;
-        gl_TessLevelOuter[0] = 2.0;
-        gl_TessLevelOuter[1] = 3.0;
-        gl_TessLevelOuter[2] = 7.0;
-		gl_TessLevelOuter[3] = 5.0;
+        gl_TessLevelInner[0] = innerLevel.x;
+		gl_TessLevelInner[1] = innerLevel.y;
+        gl_TessLevelOuter[0] = outerLevel.x;
+        gl_TessLevelOuter[1] = outerLevel.y;
+        gl_TessLevelOuter[2] = outerLevel.z;
+		gl_TessLevelOuter[3] = outerLevel.w;
     } 
 
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;

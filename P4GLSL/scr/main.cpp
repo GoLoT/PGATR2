@@ -110,6 +110,11 @@ unsigned int wireframeProgram;
 int inPosWireframe, inNormalWireframe, uModelViewMatWireframe, uModelViewProjMatWireframe, uNormalMatWireframe;
 unsigned int quadgeoProgram, trisgeoProgram, quadtessProgram, tristessProgram;
 int inPosQuadgeo, inPosTrisgeo, inPosQuadtess, inPosTristess;
+int uInnerQuad, uOuterQuad;
+int uInnerTri, uOuterTri;
+
+glm::vec2 inner (7.0,6.0);
+glm::vec4 outer (2.0,3.0,7.0,5.0);
 
 //////////////////////////////////////////////////////////////
 // Funciones auxiliares
@@ -605,6 +610,8 @@ void initShaderQuadTess()
   }
 
   inPosQuadtess = glGetAttribLocation(quadtessProgram, "inPos");
+  uInnerQuad = glGetUniformLocation(quadtessProgram, "innerLevel");
+  uOuterQuad = glGetUniformLocation(quadtessProgram, "outerLevel");
 }
 
 void initShaderTrisTess()
@@ -638,6 +645,8 @@ void initShaderTrisTess()
   }
 
   inPosTristess = glGetAttribLocation(tristessProgram, "inPos");
+  uInnerTri = glGetUniformLocation(tristessProgram, "innerLevel");
+  uOuterTri = glGetUniformLocation(tristessProgram, "outerLevel");
 }
 
 void initObj()
@@ -1142,6 +1151,14 @@ void renderTesselationOverlay()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glPatchParameteri(GL_PATCH_VERTICES, 4);
     glBindVertexArray(quadVAO);
+	  if (uOuterQuad >= 0)
+	  {
+		  glUniform4fv(uOuterQuad,1,(&outer[0]));
+	  }
+	  if (uInnerQuad >= 0)
+	  {
+		  glUniform2fv(uInnerQuad, 1, &(inner[0]));
+	  }
     glDrawArrays(GL_PATCHES, 0, 4);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     break;
@@ -1150,6 +1167,14 @@ void renderTesselationOverlay()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glPatchParameteri(GL_PATCH_VERTICES, 3);
     glBindVertexArray(triangleVAO);
+	if (uOuterTri >= 0)
+	{
+		glUniform4fv(uOuterTri, 1, &(outer[0]));
+	}
+	if (uInnerTri >= 0)
+	{
+		glUniform2fv(uInnerTri, 1, &(inner[0]));
+	}
     glDrawArrays(GL_PATCHES, 0, 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     break;
@@ -1174,7 +1199,57 @@ void idleFunc()
 	glutPostRedisplay();
 }
 
-void keyboardFunc(unsigned char key, int x, int y){}
+void keyboardFunc(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'q':
+		outer[0] += 1;
+		break;
+	case 'w':
+		outer[1] += 1;
+		break;
+	case 'e':
+		outer[2] += 1;
+		break;
+	case 'r':
+		outer[3] += 1;
+		break;
+	case 'a':
+		inner[0] += 1;
+		break;
+	case 's':
+		inner[1] += 1;
+		break;
+	case 'Q' :
+		outer[0] -= 1;
+		outer[0] = std::max(outer[0], 1.0f);
+		break;
+	case 'W':
+		outer[1] -= 1;
+		outer[1] = std::max(outer[1], 1.0f);
+		break;
+	case 'E':
+		outer[2] -= 1;
+		outer[2] = std::max(outer[2], 1.0f);
+		break;
+	case 'R':
+		outer[3] -= 1;
+		outer[3] = std::max(outer[3], 1.0f);
+		break;
+	case 'A':
+		inner[0] -= 1;
+		inner[0] = std::max(inner[0], 1.0f);
+		break;
+	case 'S':
+		inner[1] -= 1;
+		inner[1] = std::max(inner[1], 1.0f);
+	}
+
+	std::cout << "Outer = " << outer[0] << "," << outer[1] << "," << outer[2] << "," << outer[3] << std::endl;
+	std::cout << "Inner = " << inner[0] << "," << inner[1] << std::endl;
+	
+}
 void mouseFunc(int button, int state, int x, int y){}
 
 void initFBO() {
