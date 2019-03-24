@@ -325,10 +325,14 @@ void initShaderFw(const char *vname, const char *fname)
 {
 	vshader = loadShader(vname, GL_VERTEX_SHADER);
 	fshader = loadShader(fname, GL_FRAGMENT_SHADER);
+  auto tcsShader = loadShader("../shaders_P4/tessmodel.tcs", GL_TESS_CONTROL_SHADER);
+  auto tesShader = loadShader("../shaders_P4/tessmodel.tes", GL_TESS_EVALUATION_SHADER);
 
 	program = glCreateProgram();
 	glAttachShader(program, vshader);
 	glAttachShader(program, fshader);
+  glAttachShader(program, tcsShader);
+  glAttachShader(program, tesShader);
 
 	glBindAttribLocation(program, 0, "inPos");
 	glBindAttribLocation(program, 1, "inColor");
@@ -1046,6 +1050,12 @@ void renderCube()
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
 
+  GLenum err;
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error A " << err << std::endl;
+  }
+
 	if (uModelViewMat != -1)
 		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
 		&(modelView[0][0]));
@@ -1055,10 +1065,23 @@ void renderCube()
 	if (uNormalMat != -1)
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 		&(normal[0][0]));
-	
+
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error B " << err << std::endl;
+  }
+
+  glPatchParameteri(GL_PATCH_VERTICES, 3);
 	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, numTris * 3,
-		GL_UNSIGNED_INT, (void*)0);
+	/*glDrawElements(GL_TRIANGLES, numTris * 3,
+		GL_UNSIGNED_INT, (void*)0);*/
+  glDrawElements(GL_PATCHES, numTris * 3,
+    GL_UNSIGNED_INT, (void*)0);
+
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error C " << err << std::endl;
+  }
 }
 
 void renderCubeNormals()
@@ -1098,12 +1121,6 @@ void renderCubeNormals()
 
 void renderTesselationOverlay()
 {
-
-  GLenum err;
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error A " << err << std::endl;
-  }
   switch(tesselationOverlay)
   {
   case OVERLAY_QUAD:
@@ -1115,56 +1132,26 @@ void renderTesselationOverlay()
     break;
   case OVERLAY_TRIANGLE:
     glUseProgram(trisgeoProgram);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error B " << err << std::endl;
-    }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBindVertexArray(pointVao);
     glDrawArrays(GL_POINTS, 0, 1);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error C " << err << std::endl;
-    }
     break;
   case OVERLAY_TESS_QUAD:
     glUseProgram(quadtessProgram);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error B " << err << std::endl;
-    }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glPatchParameteri(0x8E72, 4); // glPatchParameteri(GL_PATCH_VERTICES​, 4);
+    glPatchParameteri(GL_PATCH_VERTICES, 4);
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_PATCHES, 0, 4);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error C " << err << std::endl;
-    }
     break;
   case OVERLAY_TESS_TRIANGLE:
     glUseProgram(tristessProgram);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error B " << err << std::endl;
-    }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glPatchParameteri(0x8E72, 3); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
     glBindVertexArray(triangleVAO);
     glDrawArrays(GL_PATCHES, 0, 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    while ((err = glGetError()) != GL_NO_ERROR)
-    {
-      std::cout << "Error C " << err << std::endl;
-    }
     break;
   }
 }
