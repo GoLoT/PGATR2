@@ -114,7 +114,7 @@ En las figuras \ref{fig:tess1} y \ref{fig:tess2} puede apreciarse la diferencia 
 
 \section{Submodulo 2}
 \subsection{Mapas de desplazamiento}
-Este apartado de la practica consiste en la implementación de mapas de desplazamiento con el objetivo de dotar de mayor realismo a la geometría sin tener, por ello, tener que cargar modelos más complejos. Por lo tanto, esta parte de la práctica se divide en dos partes: por un lado en la división de la geometría en la etapa de teselación (también podría hacerse en la de geometría) y por otro lado en el desplazamiento de los vértices en sí, el cual puede realizarse tanto en la etapa de teselación (con el TES) como en el \textit{shader} de geometría. En la figura \ref{fig:disp} puede verse el resultado de aplicar este desplazamiento al elevarse las letras de la textura a partir de una esfera. \\
+Este apartado de la practica consiste en la implementación de mapas de desplazamiento con el objetivo de dotar de mayor realismo a la geometría sin tener, por ello, tener que cargar modelos más complejos. Por lo tanto, esta parte de la práctica se divide en dos partes: por un lado en la división de la geometría en la etapa de teselación (también podría hacerse en la de geometría) y por otro lado en el desplazamiento de los vértices en sí, el cual puede realizarse tanto en la etapa de teselación (con el TES) como en el \textit{shader} de geometría. En la figura \ref{fig:disp} puede verse el resultado de aplicar este desplazamiento al elevarse las letras de la textura a partir de una esfera.\\
 
 \begin{figure}[!htb]
 \centering
@@ -136,8 +136,12 @@ Ahora, suponiendo que el desplazamiento se realice con el \textit{shader} de geo
 Por último, para desplazar los vértices en sí el proceso es completamente igual al caso del TES, simplemente se aplica el desplazamiento a cada uno de los vértices del triangulo y se conforma un nuevo triangulo con el desplazamiento.\\
 
 Como se puede observar en la práctica al cambiar de un modo a otro (tecla F8) rel resultado es exactamente el mismo. Sin embargo, el proceso sería conveniente realizarlo en el \textit{shader} de teselación, ya que siendo el resultado idéntico nos ahorramos una etapa del cauce. 
+
+
 \subsection{Detalle adaptativo}
-En este parte de la practica se propondrá una implementación para variar el nivel de detalle en función de la distancia a la camara. Más concretamente cada triángulo del objeto mostrado se dividirá en mayor o menor medida en función de esta distancia. Por lo tanto, se obtendrán distintos niveles de detalle para un mismo objeto en pantalla.\\
+En este parte de la practica se propondrá una implementación para variar el nivel de detalle en función de la distancia a la camara. Más concretamente cada triángulo del objeto mostrado se dividirá en mayor o menor medida en función de esta distancia. Por lo tanto, se obtendrán distintos niveles de detalle para un mismo objeto en pantalla.
+
+Para ayudar a la visualización de la geometría se ha añadido una opción de visualización en alambre del modelo que puede activarse y desactivarse con la tecla F9.\\
 
 Para su implementación, en primer lugar se ha decidido que existirán 10 niveles de subdivisión posibles y se le asignara un nivel u otro a cada \textit{patch} (triángulos en nuestro caso, al tratarse de \textit{patches} de 3 vértices) dependiendo de su distancia a la cámara. Por lo tanto nuestro volumen de visualización está dividido en 10 zonas que permiten distintos niveles de detalle.\\
 
