@@ -39,7 +39,7 @@ glm::mat4	model = glm::mat4(1.0f);
 float angle = 0.0f;
 
 //VAO
-unsigned int vao, normalsVao;
+unsigned int vao, normalsVao, pointVao;
 int numTris;
 
 //VBOs que forman parte del objeto
@@ -64,6 +64,7 @@ unsigned int specTexId;
 //VAO y VBO del plano
 unsigned int planeVAO;
 unsigned int planeVertexVBO;
+unsigned int triangleVAO, quadVAO;
 
 //Por definir
 unsigned int vshader;
@@ -105,7 +106,10 @@ int uPosTexLight, uNormalTexLight, uAlbedoTexLight, inPosLight, uViewLight;
 //Shader de dibujado de normales
 unsigned int normalsProgram;
 int inPosNormals, inNormalNormals, uModelViewMatNormals, uModelViewProjMatNormals, uNormalMatNormals;
-
+unsigned int wireframeProgram;
+int inPosWireframe, inNormalWireframe, uModelViewMatWireframe, uModelViewProjMatWireframe, uNormalMatWireframe;
+unsigned int quadgeoProgram, trisgeoProgram, quadtessProgram, tristessProgram;
+int inPosQuadgeo, inPosTrisgeo, inPosQuadtess, inPosTristess;
 
 //////////////////////////////////////////////////////////////
 // Funciones auxiliares
@@ -121,6 +125,7 @@ void specialFunc(int key, int x, int y);
 
 void renderCube();
 void renderCubeNormals();
+void renderTesselationOverlay();
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
@@ -129,8 +134,16 @@ void initShaderFw(const char *vname, const char *fname);
 void initShaderPP(const char *vname, const char *fname);
 void initShaderLight(const char *vname, const char *fname);
 void initShaderNormals();
+void initShaderWireframe();
+void initShaderQuadGeo();
+void initShaderTrisGeo();
+void initShaderQuadTess();
+void initShaderTrisTess();
 void initObj();
 void initPlane();
+void initPoint();
+void initTriangle();
+void initQuad();
 void destroy();
 void initFBO();
 void resizeFBO(unsigned int w, unsigned int h);
@@ -156,7 +169,23 @@ enum deferredPreviewMode {
   NOPREVIEW
 };
 
+enum geometryShaderMode {
+  DRAW_NORMALS,
+  DRAW_WIREFRAME,
+  DRAW_SHADED
+};
+
+enum tesselationOverlayMode {
+  OVERLAY_NONE,
+  OVERLAY_TRIANGLE,
+  OVERLAY_QUAD,
+  OVERLAY_TESS_TRIANGLE,
+  OVERLAY_TESS_QUAD
+};
+
 deferredPreviewMode previewMode = NOPREVIEW;
+geometryShaderMode geometryMode = DRAW_SHADED;
+tesselationOverlayMode tesselationOverlay = OVERLAY_NONE;
 
 //////////////////////////////////////////////////////////////
 // Nuevas funciones auxiliares
@@ -180,6 +209,15 @@ int main(int argc, char** argv)
 	resizeFBO(SCREEN_SIZE);
 
   initShaderNormals();
+  initShaderWireframe();
+  initShaderQuadGeo();
+  initShaderTrisGeo();
+  initShaderQuadTess();
+  initShaderTrisTess();
+
+  initPoint();
+  initTriangle();
+  initQuad();
 	
 	glutMainLoop();
 
@@ -233,7 +271,7 @@ void initOGL()
 
 	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
 	view = glm::mat4(1.0f);
-	view[3].z = -80.0f;
+	view[3].z = -40.0f;
 }
 
 
@@ -398,7 +436,7 @@ void initShaderNormals()
 {
   auto vertexShader = loadShader("../shaders_P4/drawNormals.vert", GL_VERTEX_SHADER);
   auto fragmentShader = loadShader("../shaders_P4/drawNormals.frag", GL_FRAGMENT_SHADER);
-  auto geometryShader = loadShader("../shaders_P4/drawWireFrame.geo", GL_GEOMETRY_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/drawNormals.geo", GL_GEOMETRY_SHADER);
 
   normalsProgram = glCreateProgram();
   glAttachShader(normalsProgram, vertexShader);
@@ -413,7 +451,7 @@ void initShaderNormals()
   {
     //Calculamos una cadena de error
     GLint logLen;
-    glGetProgramiv(lightProgram, GL_INFO_LOG_LENGTH, &logLen);
+    glGetProgramiv(normalsProgram, GL_INFO_LOG_LENGTH, &logLen);
     char *logString = new char[logLen];
     glGetProgramInfoLog(normalsProgram, logLen, NULL, logString);
     std::cout << "Error: " << logString << std::endl;
@@ -431,11 +469,176 @@ void initShaderNormals()
   uModelViewProjMatNormals = glGetUniformLocation(normalsProgram, "modelViewProj");
 }
 
+void initShaderWireframe()
+{
+  auto vertexShader = loadShader("../shaders_P4/drawNormals.vert", GL_VERTEX_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/drawNormals.frag", GL_FRAGMENT_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/drawWireFrame.geo", GL_GEOMETRY_SHADER);
+
+  wireframeProgram = glCreateProgram();
+  glAttachShader(wireframeProgram, vertexShader);
+  glAttachShader(wireframeProgram, geometryShader);
+  glAttachShader(wireframeProgram, fragmentShader);
+  glBindAttribLocation(wireframeProgram, 0, "inPos");
+  glBindAttribLocation(wireframeProgram, 2, "inNormal");
+  glLinkProgram(wireframeProgram);
+  int linked;
+  glGetProgramiv(wireframeProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(wireframeProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(wireframeProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(wireframeProgram);
+    normalsProgram = 0;
+    exit(-1);
+  }
+
+  inPosWireframe = glGetAttribLocation(wireframeProgram, "inPos");
+  inNormalWireframe = glGetAttribLocation(wireframeProgram, "inNormal");
+
+  uNormalMatWireframe = glGetUniformLocation(wireframeProgram, "normal");
+  uModelViewMatWireframe = glGetUniformLocation(wireframeProgram, "modelView");
+  uModelViewProjMatWireframe = glGetUniformLocation(wireframeProgram, "modelViewProj");
+}
+
+void initShaderQuadGeo()
+{
+  auto vertexShader = loadShader("../shaders_P4/geo.vert", GL_VERTEX_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_FRAGMENT_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/geoquads.geo", GL_GEOMETRY_SHADER);
+
+  quadgeoProgram = glCreateProgram();
+  glAttachShader(quadgeoProgram, vertexShader);
+  glAttachShader(quadgeoProgram, geometryShader);
+  glAttachShader(quadgeoProgram, fragmentShader);
+  glBindAttribLocation(quadgeoProgram, 0, "inPos");
+  glLinkProgram(quadgeoProgram);
+  int linked;
+  glGetProgramiv(quadgeoProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(quadgeoProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(quadgeoProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(quadgeoProgram);
+    quadgeoProgram = 0;
+    exit(-1);
+  }
+
+  inPosQuadgeo = glGetAttribLocation(quadgeoProgram, "inPos");
+}
+
+void initShaderTrisGeo()
+{
+  auto vertexShader = loadShader("../shaders_P4/geo.vert", GL_VERTEX_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_FRAGMENT_SHADER);
+  auto geometryShader = loadShader("../shaders_P4/geotris.geo", GL_GEOMETRY_SHADER);
+
+  trisgeoProgram = glCreateProgram();
+  glAttachShader(trisgeoProgram, vertexShader);
+  glAttachShader(trisgeoProgram, geometryShader);
+  glAttachShader(trisgeoProgram, fragmentShader);
+  glBindAttribLocation(trisgeoProgram, 0, "inPos");
+  glLinkProgram(trisgeoProgram);
+  int linked;
+  glGetProgramiv(trisgeoProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(trisgeoProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(trisgeoProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(trisgeoProgram);
+    trisgeoProgram = 0;
+    exit(-1);
+  }
+
+  inPosTrisgeo = glGetAttribLocation(trisgeoProgram, "inPos");
+}
+
+void initShaderQuadTess()
+{
+  auto vertexShader = loadShader("../shaders_P4/geo.vert", GL_VERTEX_SHADER);
+  auto tcsShader = loadShader("../shaders_P4/tessquads.tcs", GL_TESS_CONTROL_SHADER);
+  auto tesShader = loadShader("../shaders_P4/tessquads.tes", GL_TESS_EVALUATION_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_GEOMETRY_SHADER);
+
+  quadtessProgram = glCreateProgram();
+  glAttachShader(quadtessProgram, vertexShader);
+  glAttachShader(quadtessProgram, fragmentShader);
+  glAttachShader(quadtessProgram, tcsShader);
+  glAttachShader(quadtessProgram, tesShader);
+  glBindAttribLocation(quadtessProgram, 0, "inPos");
+  glLinkProgram(quadtessProgram);
+  int linked;
+  glGetProgramiv(quadtessProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(quadtessProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(quadtessProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(quadtessProgram);
+    quadtessProgram = 0;
+    exit(-1);
+  }
+
+  inPosQuadtess = glGetAttribLocation(quadtessProgram, "inPos");
+}
+
+void initShaderTrisTess()
+{
+  auto vertexShader = loadShader("../shaders_P4/geo.vert", GL_VERTEX_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_FRAGMENT_SHADER);
+  auto tcsShader = loadShader("../shaders_P4/tesstris.tcs", GL_TESS_CONTROL_SHADER);
+  auto tesShader = loadShader("../shaders_P4/tesstris.tes", GL_TESS_EVALUATION_SHADER);
+
+  tristessProgram = glCreateProgram();
+  glAttachShader(tristessProgram, vertexShader);
+  glAttachShader(tristessProgram, tcsShader);
+  glAttachShader(tristessProgram, tesShader);
+  glAttachShader(tristessProgram, fragmentShader);
+  glBindAttribLocation(tristessProgram, 0, "inPos");
+  glLinkProgram(tristessProgram);
+  int linked;
+  glGetProgramiv(tristessProgram, GL_LINK_STATUS, &linked);
+  if (!linked)
+  {
+    //Calculamos una cadena de error
+    GLint logLen;
+    glGetProgramiv(tristessProgram, GL_INFO_LOG_LENGTH, &logLen);
+    char *logString = new char[logLen];
+    glGetProgramInfoLog(tristessProgram, logLen, NULL, logString);
+    std::cout << "Error: " << logString << std::endl;
+    delete logString;
+    glDeleteProgram(tristessProgram);
+    tristessProgram = 0;
+    exit(-1);
+  }
+
+  inPosTristess = glGetAttribLocation(tristessProgram, "inPos");
+}
+
 void initObj()
 {
 
   const struct aiScene* scene = NULL;
-  scene = aiImportFile(R"(../model/sphere.obj)", aiProcess_GenNormals);
+  scene = aiImportFile(R"(../model/teapot.obj)", aiProcess_GenNormals);
   auto scene2 = aiApplyPostProcessing(scene, aiProcess_CalcTangentSpace);
   auto mesh = scene2->mMeshes[0];
 
@@ -574,6 +777,26 @@ void initObj()
 	specTexId = loadTex("../img/emissive.png");
 }
 
+void initPoint()
+{
+  glGenVertexArrays(1, &pointVao);
+  glBindVertexArray(pointVao);
+
+  float point[3] = { 0.0f, 0.0f, 0.0f };
+
+  glUseProgram(tristessProgram);
+  if (inPos != -1)
+  {
+    GLuint posVBO;
+    glGenBuffers(1, &posVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+    glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(float),
+      point, GL_STATIC_DRAW);
+    glVertexAttribPointer(inPosTristess, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(inPosTristess);
+  }
+}
+
 void initPlane()
 {
 	glGenVertexArrays(1, &planeVAO);
@@ -585,6 +808,49 @@ void initPlane()
 	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glEnableVertexAttribArray(inPosPP);
+}
+
+void initTriangle()
+{
+  glGenVertexArrays(1, &triangleVAO);
+  glBindVertexArray(triangleVAO);
+
+  float vertices[] = { -0.7, -0.7, 0.0,
+                       0.7, -0.7, 0.0, 
+                       0.0, 0.7, 0.0 };
+
+  GLuint triangleVertexVBO;
+  glGenBuffers(1, &triangleVertexVBO);
+  glBindBuffer(GL_ARRAY_BUFFER, triangleVertexVBO);
+  glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(float) * 3,
+    vertices, GL_STATIC_DRAW);
+
+  glUseProgram(tristessProgram);
+  glVertexAttribPointer(inPosTristess, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+  glEnableVertexAttribArray(inPosTristess);
+}
+
+void initQuad()
+{
+  glGenVertexArrays(1, &triangleVAO);
+  glBindVertexArray(triangleVAO);
+
+  float vertices[] = { -0.7, 0.7, 0.0,
+                       -0.7, -0.7, 0.0,
+                       0.7, 0.7, 0.0,
+                       0.7, -0.7, 0.0 };
+
+  GLuint quadVertexVBO;
+  glGenBuffers(1, &quadVertexVBO);
+  glBindBuffer(GL_ARRAY_BUFFER, quadVertexVBO);
+  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(float) * 3,
+    vertices, GL_STATIC_DRAW);
+
+  glUseProgram(quadtessProgram);
+  glVertexAttribPointer(inPosQuadtess, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+  glEnableVertexAttribArray(inPosQuadtess);
 }
 
 GLuint loadShader(const char *fileName, GLenum type)
@@ -677,13 +943,12 @@ void renderFunc()
 		glUniform1i(uSpecTex, 1);
 	}
 
-
-
 	model = glm::mat4(2.0f);
 	model[3].w = 1.0f;
 	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
 	renderCube();
-  renderCubeNormals();
+  if(geometryMode != DRAW_SHADED)
+    renderCubeNormals();
 
   //Omitir etapas posteriores si estamos visualizando etapas intermedias
   if (previewMode == NOPREVIEW) {
@@ -719,6 +984,9 @@ void renderFunc()
 
     glBindVertexArray(planeVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    if (tesselationOverlay != OVERLAY_NONE)
+      renderTesselationOverlay();
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -789,7 +1057,15 @@ void renderCube()
 
 void renderCubeNormals()
 {
-  glUseProgram(normalsProgram);
+  switch(geometryMode)
+  {
+    case DRAW_NORMALS:
+      glUseProgram(normalsProgram);
+      break;
+    case DRAW_WIREFRAME:
+      glUseProgram(wireframeProgram);
+      break;
+  }
 
   glm::mat4 modelView = view * model;
   glm::mat4 modelViewProj = proj * view * model;
@@ -810,13 +1086,88 @@ void renderCubeNormals()
   glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, numTris * 3,
     GL_UNSIGNED_INT, (void*)0);
+
+  glEnable(GL_CULL_FACE);
+}
+
+void renderTesselationOverlay()
+{
+
+  GLenum err;
+  while ((err = glGetError()) != GL_NO_ERROR)
+  {
+    std::cout << "Error A " << err << std::endl;
+  }
+  switch(tesselationOverlay)
+  {
+  case OVERLAY_QUAD:
+    glUseProgram(quadgeoProgram);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glBindVertexArray(pointVao);
+    glDrawArrays(GL_POINTS, 0, 1);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    break;
+  case OVERLAY_TRIANGLE:
+    glUseProgram(trisgeoProgram);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error B " << err << std::endl;
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glBindVertexArray(pointVao);
+    glDrawArrays(GL_POINTS, 0, 1);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error C " << err << std::endl;
+    }
+    break;
+  case OVERLAY_TESS_QUAD:
+    glUseProgram(quadtessProgram);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error B " << err << std::endl;
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glPatchParameteri(0x8E72, 4); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_PATCHES, 0, 1);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error C " << err << std::endl;
+    }
+    break;
+  case OVERLAY_TESS_TRIANGLE:
+    glUseProgram(tristessProgram);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error B " << err << std::endl;
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glPatchParameteri(0x8E72, 3); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
+    glBindVertexArray(triangleVAO);
+    glDrawArrays(GL_PATCHES, 0, 1);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+      std::cout << "Error C " << err << std::endl;
+    }
+    break;
+  }
 }
 
 
 void resizeFunc(int width, int height)
 {
 	glViewport(0, 0, width, height);
-	proj = glm::perspective(glm::radians(60.0f), float(width) /float(height), 1.0f, 50.0f);
+	proj = glm::perspective(glm::radians(60.0f), float(width) /float(height), 1.0f, 550.0f);
 
 	resizeFBO(width, height);
 
@@ -909,6 +1260,14 @@ void specialFunc(int key, int x, int y) {
     break;
   case GLUT_KEY_F5:
     previewMode = DEPTH;
+    break;
+  case GLUT_KEY_F6:
+    geometryMode = (geometryShaderMode)((int) geometryMode + 1);
+    if (geometryMode > DRAW_SHADED) geometryMode = (geometryShaderMode) 0;
+    break;
+  case GLUT_KEY_F7:
+    tesselationOverlay = (tesselationOverlayMode)((int)tesselationOverlay + 1);
+    if (tesselationOverlay > OVERLAY_TESS_QUAD) tesselationOverlay = (tesselationOverlayMode) 0;
     break;
   }
   

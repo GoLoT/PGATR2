@@ -73,5 +73,29 @@
     <None Include="..\shaders_P4\drawWireFrame.geo">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\shaders_P4\geo.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\geo.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\geoquads.geo">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\tessquads.tcs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\geotris.geo">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\tesstris.tcs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\tesstris.tes">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\tessquads.tes">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

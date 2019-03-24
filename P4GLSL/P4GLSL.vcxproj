@@ -31,6 +31,14 @@
     <None Include="..\shaders_P4\fwRendering.v0.vert" />
     <None Include="..\shaders_P4\fwRendering.v2.frag" />
     <None Include="..\shaders_P4\fwRendering.v2.vert" />
+    <None Include="..\shaders_P4\geo.frag" />
+    <None Include="..\shaders_P4\geo.vert" />
+    <None Include="..\shaders_P4\geoquads.geo" />
+    <None Include="..\shaders_P4\tessquads.tcs" />
+    <None Include="..\shaders_P4\geotris.geo" />
+    <None Include="..\shaders_P4\tessquads.tes" />
+    <None Include="..\shaders_P4\tesstris.tcs" />
+    <None Include="..\shaders_P4\tesstris.tes" />
     <None Include="..\shaders_P4\postProcessing.light.frag" />
     <None Include="..\shaders_P4\postProcessing.v0.frag" />
     <None Include="..\shaders_P4\postProcessing.v0.vert" />
