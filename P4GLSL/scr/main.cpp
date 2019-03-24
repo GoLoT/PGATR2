@@ -212,7 +212,7 @@ int main(int argc, char** argv)
   initShaderWireframe();
   initShaderQuadGeo();
   initShaderTrisGeo();
-  initShaderQuadTess();
+  //initShaderQuadTess();
   initShaderTrisTess();
 
   initPoint();
