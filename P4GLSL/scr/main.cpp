@@ -1134,7 +1134,7 @@ void renderTesselationOverlay()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glPatchParameteri(0x8E72, 4); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
     glBindVertexArray(quadVAO);
-    glDrawArrays(GL_PATCHES, 0, 1);
+    glDrawArrays(GL_PATCHES, 0, 4);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     while ((err = glGetError()) != GL_NO_ERROR)
@@ -1152,7 +1152,7 @@ void renderTesselationOverlay()
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glPatchParameteri(0x8E72, 3); // glPatchParameteri(GL_PATCH_VERTICES​, 3);
     glBindVertexArray(triangleVAO);
-    glDrawArrays(GL_PATCHES, 0, 1);
+    glDrawArrays(GL_PATCHES, 0, 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     while ((err = glGetError()) != GL_NO_ERROR)
