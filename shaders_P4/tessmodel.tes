@@ -2,8 +2,17 @@
 
 layout (triangles, equal_spacing, cw) in;
 
+in vec3 tess_norm[];
+in vec2 tess_texCoord[];
+in vec3 tess_pos[];
+
+out vec3 norm;
+out vec2 texCoord;
+out vec3 pos;
+
 void main(void){ 
 
 	gl_Position=(gl_TessCoord.x*gl_in[0].gl_Position+gl_TessCoord.y*gl_in[1].gl_Position+gl_TessCoord.z*gl_in[2].gl_Position);
-
+	texCoord=(gl_TessCoord.x*tess_texCoord[0]+gl_TessCoord.y*tess_texCoord[1]+gl_TessCoord.z*tess_texCoord[2]);
+	norm=(gl_TessCoord.x*tess_norm[0]+gl_TessCoord.y*tess_norm[1]+gl_TessCoord.z*tess_norm[2]);
 }
