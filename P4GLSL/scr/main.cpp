@@ -212,7 +212,7 @@ int main(int argc, char** argv)
   initShaderWireframe();
   initShaderQuadGeo();
   initShaderTrisGeo();
-  //initShaderQuadTess();
+  initShaderQuadTess();
   initShaderTrisTess();
 
   initPoint();
@@ -573,7 +573,7 @@ void initShaderQuadTess()
   auto vertexShader = loadShader("../shaders_P4/geo.vert", GL_VERTEX_SHADER);
   auto tcsShader = loadShader("../shaders_P4/tessquads.tcs", GL_TESS_CONTROL_SHADER);
   auto tesShader = loadShader("../shaders_P4/tessquads.tes", GL_TESS_EVALUATION_SHADER);
-  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_GEOMETRY_SHADER);
+  auto fragmentShader = loadShader("../shaders_P4/geo.frag", GL_FRAGMENT_SHADER);
 
   quadtessProgram = glCreateProgram();
   glAttachShader(quadtessProgram, vertexShader);
