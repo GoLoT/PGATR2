@@ -108,6 +108,8 @@ unsigned int normalsProgram;
 int inPosNormals, inNormalNormals, uModelViewMatNormals, uModelViewProjMatNormals, uNormalMatNormals;
 unsigned int wireframeProgram;
 int inPosWireframe, inNormalWireframe, uModelViewMatWireframe, uModelViewProjMatWireframe, uNormalMatWireframe;
+unsigned int pointsProgram;
+int inPosPoints, inNormalPoints, uModelViewMatPoints, uModelViewProjMatPoints, uNormalMatPoints;
 unsigned int quadgeoProgram, trisgeoProgram, quadtessProgram, tristessProgram;
 int inPosQuadgeo, inPosTrisgeo, inPosQuadtess, inPosTristess;
 int uInnerQuad, uOuterQuad;
@@ -138,6 +140,7 @@ void initOGL();
 void initShaderFw(const char *vname, const char *fname);
 void initShaderPP(const char *vname, const char *fname);
 void initShaderLight(const char *vname, const char *fname);
+void initShaderPoints();
 void initShaderNormals();
 void initShaderWireframe();
 void initShaderQuadGeo();
@@ -177,8 +180,9 @@ enum deferredPreviewMode {
 };
 
 enum geometryShaderMode {
-  DRAW_NORMALS,
-  DRAW_WIREFRAME,
+	DRAW_NORMALS,
+	DRAW_WIREFRAME,
+	DRAW_POINTS,
   DRAW_SHADED
 };
 
@@ -215,6 +219,7 @@ int main(int argc, char** argv)
 	initFBO();
 	resizeFBO(SCREEN_SIZE);
 
+  initShaderPoints();
   initShaderNormals();
   initShaderWireframe();
   initShaderQuadGeo();
@@ -279,6 +284,7 @@ void initOGL()
 	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
 	view = glm::mat4(1.0f);
 	view[3].z = -3.0f;
+	glPointSize(5);
 }
 
 
@@ -441,6 +447,43 @@ void initShaderLight(const char *vname, const char *fname)
   uAlbedoTexLight = glGetUniformLocation(lightProgram, "albedoSpecTex");
   uViewLight = glGetUniformLocation(lightProgram, "view");
   inPosLight = glGetAttribLocation(lightProgram, "inPos");
+}
+
+void initShaderPoints()
+{
+	auto vertexShader = loadShader("../shaders_P4/drawNormals.vert", GL_VERTEX_SHADER);
+	auto fragmentShader = loadShader("../shaders_P4/drawNormals.frag", GL_FRAGMENT_SHADER);
+	auto geometryShader = loadShader("../shaders_P4/drawVertex.geo", GL_GEOMETRY_SHADER);
+
+	pointsProgram = glCreateProgram();
+	glAttachShader(pointsProgram, vertexShader);
+	glAttachShader(pointsProgram, geometryShader);
+	glAttachShader(pointsProgram, fragmentShader);
+	glBindAttribLocation(pointsProgram, 0, "inPos");
+	glBindAttribLocation(pointsProgram, 2, "inNormal");
+	glLinkProgram(pointsProgram);
+	int linked;
+	glGetProgramiv(pointsProgram, GL_LINK_STATUS, &linked);
+	if (!linked)
+	{
+		//Calculamos una cadena de error
+		GLint logLen;
+		glGetProgramiv(pointsProgram, GL_INFO_LOG_LENGTH, &logLen);
+		char *logString = new char[logLen];
+		glGetProgramInfoLog(pointsProgram, logLen, NULL, logString);
+		std::cout << "Error: " << logString << std::endl;
+		delete logString;
+		glDeleteProgram(pointsProgram);
+		pointsProgram = 0;
+		exit(-1);
+	}
+
+	inPosPoints = glGetAttribLocation(pointsProgram, "inPos");
+	inNormalPoints = glGetAttribLocation(pointsProgram, "inNormal");
+
+	uNormalMatPoints = glGetUniformLocation(pointsProgram, "normal");
+	uModelViewMatPoints = glGetUniformLocation(pointsProgram, "modelView");
+	uModelViewProjMatPoints = glGetUniformLocation(pointsProgram, "modelViewProj");
 }
 
 void initShaderNormals()
@@ -1093,6 +1136,7 @@ void renderCube()
   }
 }
 
+
 void renderCubeNormals()
 {
   switch(geometryMode)
@@ -1103,6 +1147,9 @@ void renderCubeNormals()
     case DRAW_WIREFRAME:
       glUseProgram(wireframeProgram);
       break;
+	case DRAW_POINTS:
+		glUseProgram(pointsProgram);
+	  break;
   }
 
   glm::mat4 modelView = view * model;
