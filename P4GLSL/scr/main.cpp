@@ -86,6 +86,13 @@ int inColor;
 int inNormal;
 int inTexCoord;
 
+unsigned int programGeo;
+int uModelViewMatGeo, uModelViewProjMatGeo, uNormalMatGeo;
+int uColorTexGeo, uSpecTexGeo;
+int inPosGeo, inColorGeo, inNormalGeo, inTexCoordGeo;
+
+
+
 //////////////////////////////
 //Shader de post-proceso
 unsigned int postProccesVShader;
@@ -138,6 +145,7 @@ void renderTesselationOverlay();
 void initContext(int argc, char** argv);
 void initOGL();
 void initShaderFw(const char *vname, const char *fname);
+void initShaderFwGeo(const char *vname, const char *fname);
 void initShaderPP(const char *vname, const char *fname);
 void initShaderLight(const char *vname, const char *fname);
 void initShaderPoints();
@@ -183,9 +191,14 @@ enum geometryShaderMode {
 	DRAW_NORMALS,
 	DRAW_WIREFRAME,
 	DRAW_POINTS,
-  DRAW_SHADED
+	DRAW_SHADED
 };
 
+enum displacementModes
+{
+	Teselation,
+	Geometry
+};
 enum tesselationOverlayMode {
   OVERLAY_NONE,
   OVERLAY_TRIANGLE,
@@ -197,6 +210,7 @@ enum tesselationOverlayMode {
 deferredPreviewMode previewMode = NOPREVIEW;
 geometryShaderMode geometryMode = DRAW_SHADED;
 tesselationOverlayMode tesselationOverlay = OVERLAY_NONE;
+displacementModes displacementMode = Teselation;
 
 //////////////////////////////////////////////////////////////
 // Nuevas funciones auxiliares
@@ -211,6 +225,7 @@ int main(int argc, char** argv)
 	initContext(argc, argv);
 	initOGL();
 	initShaderFw("../shaders_P4/fwRendering.v2.vert", "../shaders_P4/fwRendering.v2.frag");
+	initShaderFwGeo("../shaders_P4/fwRendering.v2.vert", "../shaders_P4/fwRendering.v2.frag");
 	initShaderPP("../shaders_P4/postProcessing.v2.vert",
 		"../shaders_P4/postProcessing.v2.frag");
   initShaderLight("../shaders_P4/postProcessing.v2.vert", "../shaders_P4/postProcessing.light.frag");
@@ -382,6 +397,60 @@ void initShaderFw(const char *vname, const char *fname)
 	inColor = glGetAttribLocation(program, "inColor");
 	inNormal = glGetAttribLocation(program, "inNormal");
 	inTexCoord = glGetAttribLocation(program, "inTexCoord");
+}
+
+void initShaderFwGeo(const char *vname, const char *fname)
+{
+	vshader = loadShader(vname, GL_VERTEX_SHADER);
+	fshader = loadShader(fname, GL_FRAGMENT_SHADER);
+	auto tcsShader = loadShader("../shaders_P4/tessmodel.tcs", GL_TESS_CONTROL_SHADER);
+	auto tesShader = loadShader("../shaders_P4/tessmodelDummy.tes", GL_TESS_EVALUATION_SHADER);
+	auto geoShader = loadShader("../shaders_P4/tessmodel.geo", GL_GEOMETRY_SHADER);
+
+	programGeo = glCreateProgram();
+	glAttachShader(programGeo, vshader);
+	glAttachShader(programGeo, fshader);
+	glAttachShader(programGeo, tcsShader);
+	glAttachShader(programGeo, tesShader);
+	glAttachShader(programGeo, geoShader);
+
+	glBindAttribLocation(programGeo, 0, "inPos");
+	glBindAttribLocation(programGeo, 1, "inColor");
+	glBindAttribLocation(programGeo, 2, "inNormal");
+	glBindAttribLocation(programGeo, 3, "inTexCoord");
+
+
+	glLinkProgram(programGeo);
+
+	int linked;
+	glGetProgramiv(programGeo, GL_LINK_STATUS, &linked);
+	if (!linked)
+	{
+		//Calculamos una cadena de error
+		GLint logLen;
+		glGetProgramiv(programGeo, GL_INFO_LOG_LENGTH, &logLen);
+
+		char *logString = new char[logLen];
+		glGetProgramInfoLog(programGeo, logLen, NULL, logString);
+		std::cout << "Error: " << logString << std::endl;
+		delete logString;
+
+		glDeleteProgram(programGeo);
+		programGeo = 0;
+		exit(-1);
+	}
+
+	uNormalMatGeo = glGetUniformLocation(programGeo, "normal");
+	uModelViewMatGeo = glGetUniformLocation(programGeo, "modelView");
+	uModelViewProjMatGeo = glGetUniformLocation(programGeo, "modelViewProj");
+
+	uColorTexGeo = glGetUniformLocation(programGeo, "colorTex");
+	uSpecTexGeo = glGetUniformLocation(programGeo, "specTex");
+
+	inPosGeo = glGetAttribLocation(programGeo, "inPos");
+	inColorGeo = glGetAttribLocation(programGeo, "inColor");
+	inNormalGeo = glGetAttribLocation(programGeo, "inNormal");
+	inTexCoordGeo = glGetAttribLocation(programGeo, "inTexCoord");
 }
 
 void initShaderPP(const char *vname, const char *fname)
@@ -984,22 +1053,41 @@ void renderFunc()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/**/
-	glUseProgram(program);
-
-	//Texturas
-	if (uColorTex != -1)
+	switch (displacementMode)
 	{
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, colorTexId);
-		glUniform1i(uColorTex, 0);
-	}
+	case Teselation:
+		glUseProgram(program);
+		if (uColorTex != -1)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, colorTexId);
+			glUniform1i(uColorTex, 0);
+		}
 
-	if (uSpecTex != -1)
-	{
-		glActiveTexture(GL_TEXTURE0 + 1);
-		glBindTexture(GL_TEXTURE_2D, specTexId);
-		glUniform1i(uSpecTex, 1);
+		if (uSpecTex != -1)
+		{
+			glActiveTexture(GL_TEXTURE0 + 1);
+			glBindTexture(GL_TEXTURE_2D, specTexId);
+			glUniform1i(uSpecTex, 1);
+		}
+		break;
+	case Geometry:
+		glUseProgram(programGeo);
+		if (uColorTexGeo != -1)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, colorTexId);
+			glUniform1i(uColorTexGeo, 0);
+		}
+
+		if (uSpecTexGeo != -1)
+		{
+			glActiveTexture(GL_TEXTURE0 + 1);
+			glBindTexture(GL_TEXTURE_2D, specTexId);
+			glUniform1i(uSpecTexGeo, 1);
+		}
 	}
+	
 
 	model = glm::mat4(2.0f);
 	model[3].w = 1.0f;
@@ -1096,44 +1184,44 @@ void renderFunc()
 
 void renderCube()
 {
-  glUseProgram(program);
-
 	glm::mat4 modelView = view * model;
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
 
-  GLenum err;
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error A " << err << std::endl;
-  }
+	switch (displacementMode)
+	{
+	case Teselation:
+		glUseProgram(program);
+		if (uModelViewMat != -1)
+			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+				&(modelView[0][0]));
+		if (uModelViewProjMat != -1)
+			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+				&(modelViewProj[0][0]));
+		if (uNormalMat != -1)
+			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+				&(normal[0][0]));
+		break;
+	case Geometry:
+		glUseProgram(programGeo);
+		if (uModelViewMatGeo != -1)
+			glUniformMatrix4fv(uModelViewMatGeo, 1, GL_FALSE,
+				&(modelView[0][0]));
+		if (uModelViewProjMatGeo != -1)
+			glUniformMatrix4fv(uModelViewProjMatGeo, 1, GL_FALSE,
+				&(modelViewProj[0][0]));
+		if (uNormalMatGeo != -1)
+			glUniformMatrix4fv(uNormalMatGeo, 1, GL_FALSE,
+				&(normal[0][0]));
+	}
 
-	if (uModelViewMat != -1)
-		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
-		&(modelView[0][0]));
-	if (uModelViewProjMat != -1)
-		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-		&(modelViewProj[0][0]));
-	if (uNormalMat != -1)
-		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
-		&(normal[0][0]));
-
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error B " << err << std::endl;
-  }
-
+	
   glPatchParameteri(GL_PATCH_VERTICES, 3);
 	glBindVertexArray(vao);
 	/*glDrawElements(GL_TRIANGLES, numTris * 3,
 		GL_UNSIGNED_INT, (void*)0);*/
   glDrawElements(GL_PATCHES, numTris * 3,
     GL_UNSIGNED_INT, (void*)0);
-
-  while ((err = glGetError()) != GL_NO_ERROR)
-  {
-    std::cout << "Error C " << err << std::endl;
-  }
 }
 
 
@@ -1385,6 +1473,8 @@ void specialFunc(int key, int x, int y) {
     if (tesselationOverlay > OVERLAY_TESS_QUAD) tesselationOverlay = (tesselationOverlayMode) 0;
     break;
   case GLUT_KEY_F8:
+	  displacementMode = (displacementModes)((int)displacementMode + 1);
+	  if (displacementMode > Geometry) displacementMode = (displacementModes)0;
     //TODO: Enable/disable displacement
     break;
   case GLUT_KEY_F9:

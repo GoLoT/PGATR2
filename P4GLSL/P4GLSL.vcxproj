@@ -35,8 +35,10 @@
     <None Include="..\shaders_P4\geo.frag" />
     <None Include="..\shaders_P4\geo.vert" />
     <None Include="..\shaders_P4\geoquads.geo" />
+    <None Include="..\shaders_P4\tessmodel.geo" />
     <None Include="..\shaders_P4\tessmodel.tcs" />
     <None Include="..\shaders_P4\tessmodel.tes" />
+    <None Include="..\shaders_P4\tessmodelDummy.tes" />
     <None Include="..\shaders_P4\tessquads.tcs" />
     <None Include="..\shaders_P4\geotris.geo" />
     <None Include="..\shaders_P4\tessquads.tes" />

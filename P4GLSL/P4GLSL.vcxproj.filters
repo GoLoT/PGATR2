@@ -106,5 +106,11 @@
     <None Include="..\shaders_P4\drawVertex.geo">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\shaders_P4\tessmodel.geo">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\tessmodelDummy.tes">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
